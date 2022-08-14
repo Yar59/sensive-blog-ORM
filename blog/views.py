@@ -56,7 +56,7 @@ def index(request):
 
 def post_detail(request, slug):
     post = Post.objects.get(slug=slug)
-    comments = Comment.objects.filter(post=post)
+    comments = post.comments.all().prefetch_related('author')
     serialized_comments = []
     for comment in comments:
         serialized_comments.append({
@@ -65,7 +65,7 @@ def post_detail(request, slug):
             'author': comment.author.username,
         })
 
-    likes = post.likes.all().count()
+    likes = post.likes.count()
 
     related_tags = post.tags.annotate(posts_amount=Count('posts'))
 
