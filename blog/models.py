@@ -11,6 +11,27 @@ class TagQuerySet(models.QuerySet):
         return most_popular_tags
 
 
+class PostQuerySet(models.QuerySet):
+
+    def popular(self):
+        most_liked_posts = self.annotate(likes_amount=Count('likes')).order_by('-likes_amount')
+        return most_liked_posts
+
+    def fetch_with_comments_count(self):
+        """
+        Функция позволяет получить кол-во комментариев к постам в поле comments_amount не прибегая к двойному
+        использованию annotate, если посты сортируются по кол-ву лайков
+        """
+        posts = self
+        posts_ids = [post.id for post in posts]
+        posts_with_comments = Post.objects.filter(id__in=posts_ids).annotate(comments_amount=Count('comments'))
+        ids_and_comments = posts_with_comments.values_list('id', 'comments_amount')
+        count_for_id = dict(ids_and_comments)
+        for post in posts:
+            post.comments_amount = count_for_id[post.id]
+        return posts
+
+
 class Post(models.Model):
     title = models.CharField('Заголовок', max_length=200)
     text = models.TextField('Текст')
@@ -38,6 +59,8 @@ class Post(models.Model):
 
     def get_absolute_url(self):
         return reverse('post_detail', args={'slug': self.slug})
+
+    objects = PostQuerySet.as_manager()
 
     class Meta:
         ordering = ['-published_at']
